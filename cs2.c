@@ -5,7 +5,7 @@
 
 size_t bsize   = 4096;		/* buffer size */
 size_t ivlen   = 10;		/* Initialization Vector length */
-int    mix_n   = 20;		/* no. of key schedules (CipherSaber-2) */
+int    mix_n   = 1;		/* no. of key schedules (CipherSaber-2) */
 char   mode    = 'e';		/* de/encrpytion */
 int    verbose = 1;		/* verbosity */
 
@@ -66,6 +66,7 @@ int main (int argc, char **argv)
   memcpy (key, passphrase, passlen);
   memcpy (key + passlen, iv, ivlen);
   set_key (&k, key, passlen + ivlen);
+  init_keystream (&k, mix_n);
 
   /* Destroy the passphrase */
   memset (passphrase, 0, strlen (passphrase));
