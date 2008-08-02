@@ -15,4 +15,4 @@ sc2.o  : sc2.c arcfour.h
 .PHONY : clean
 
 clean : 
-	$(RM) arcfour cs2 main.o arcfour.o
+	$(RM) arcfour cs2 cs2.o main.o arcfour.o
