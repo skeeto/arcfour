@@ -1,5 +1,5 @@
 /* ARC4 (Alleged RC4) implementation
- * 
+ *
  * Due to flaws discovered in the RC4 keystream, it is advised to drop
  * the first 768 bytes (3072 for the paranoid) from the keystream,
  * which is what dump_bytes() is for.
@@ -21,10 +21,12 @@ typedef struct keystream
 } keystream;
 
 /* keystream functions */
-void init_keystream (keystream *k);
+void init_keystream (keystream *k, int n);
 void get_bytes (keystream *k, void *buffer, size_t bytes);
 void dump_bytes (keystream *k, size_t bytes);
 void arc4_crypt (keystream *k, void *buffer, size_t bytes);
+
+/* key/state clearing functions */
 void clear_key (keystream *k);
 void clear_state (keystream *k);
 void clear_keystream (keystream *k);

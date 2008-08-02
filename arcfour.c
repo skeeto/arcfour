@@ -6,21 +6,23 @@
 #define SWAP(a, b) if (a ^ b) {a ^= b; b ^= a; a ^= b;}
 
 /* Initialize a keystream.  */
-void init_keystream (keystream *k)
+void init_keystream (keystream *k, int n)
 {
   k->i = 0;
   k->j = 0;
-  
+
   int i;
   for (i = 0; i < 256; i++)
     k->S[i] = i;
-  
+
+  int s;
   byte j = 0;
-  for (i = 0; i < 256; i++)
-    {
-      j += k->S[i] + k->key[i % k->keylen];
-      SWAP(k->S[i], k->S[j]);
-    }
+  for (s = 0; s < n; s++)
+    for (i = 0; i < 256; i++)
+      {
+	j += k->S[i] + k->key[i % k->keylen];
+	SWAP(k->S[i], k->S[j]);
+      }
 }
 
 /* Retrieve some bytes from the keystream. */
@@ -52,7 +54,7 @@ void arc4_crypt (keystream *k, void *buffer, size_t bytes)
 {
   size_t chunk_max = 1024;
   byte chunk[chunk_max];
-  
+
   size_t i, j;
   for (i = 0; i < bytes; i += chunk_max)
     {
@@ -92,7 +94,7 @@ void set_key (keystream *k, void *key, size_t size)
   if (k->keylen > 256)
     k->keylen = 256;
   memcpy (&k->key[0], (byte *)key, k->keylen);
-  init_keystream (k);
+  init_keystream (k, 1);
 }
 
 /* Set the key as a given string. */
@@ -102,7 +104,7 @@ void set_strkey (keystream *k, char *str)
   if (k->keylen > 256)
     k->keylen = 256;
   memcpy (&k->key[0], str, k->keylen);
-  init_keystream (k);
+  init_keystream (k, 1);
 }
 
 /* Set the key from a hexadecimal value from a string. */
@@ -111,7 +113,7 @@ void set_hexkey (keystream *k, char *str)
   k->keylen = strlen(str) / 2;
   if (k->keylen > 256)
     k->keylen = 256;
-  
+
   short i;
   for (i = 0; i < k->keylen; i++)
     {
@@ -119,6 +121,6 @@ void set_hexkey (keystream *k, char *str)
       scanf(str + i*2, "%2x", &r);
       k->key[i] = r;
     }
-  
-  init_keystream (k);
+
+  init_keystream (k, 1);
 }
