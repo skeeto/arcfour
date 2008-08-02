@@ -79,7 +79,7 @@ char *cs_getpass (int confirm)
 	  free (pass1);
 	  return NULL;
 	}
-      if (strcmp(pass1, pass2) != 0)
+      if (strcmp(pass1, pass2) == 0)
 	{
 	  free (pass1);
 	  break;
