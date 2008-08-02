@@ -60,7 +60,6 @@ int main (int argc, char **argv)
   char *passphrase = getpass ("Passphrase: ");
   size_t passlen = strlen (passphrase);
   passlen = (passlen < 256 - ivlen ? passlen : 256 - ivlen);
-  fprintf(stderr, "%s  %d\n", passphrase, passlen);
 
   /* Build the key */
   char *key = (char *) malloc (passlen + 10);
@@ -71,6 +70,7 @@ int main (int argc, char **argv)
   /* Destroy the passphrase */
   memset (passphrase, 0, strlen (passphrase));
   memset (key, 0, passlen + 10);
+  clear_key (&k);
 
   /* Process input */
   byte *buffer, *ks;
@@ -85,5 +85,6 @@ int main (int argc, char **argv)
       fwrite (buffer, in, 1, stdout);
     }
 
+  clear_keystream (&k);
   return EXIT_SUCCESS;
 }
