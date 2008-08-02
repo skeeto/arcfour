@@ -26,7 +26,6 @@ void print_warn (char *s)
 int main (int argc, char **argv)
 {
   keystream k;
-  (void) mix_n;
 
   if (argc > 1 && strcmp(argv[1], "-d") == 0)
     mode = 'd';
