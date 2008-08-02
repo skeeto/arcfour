@@ -25,6 +25,9 @@ void init_keystream (keystream *k);
 void get_bytes (keystream *k, void *buffer, size_t bytes);
 void dump_bytes (keystream *k, size_t bytes);
 void arc4_crypt (keystream *k, void *buffer, size_t bytes);
+void clear_key (keystream *k);
+void clear_state (keystream *k);
+void clear_keystream (keystream *k);
 
 /* Key setting functions */
 void set_key (keystream *k, void *key, size_t size);

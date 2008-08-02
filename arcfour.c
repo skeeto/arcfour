@@ -63,6 +63,28 @@ void arc4_crypt (keystream *k, void *buffer, size_t bytes)
     }
 }
 
+/* Destroy the key stored in the keystream struct. */
+void clear_key (keystream *k)
+{
+  memset (&k->key[0], 0, 256);
+  k->keylen = 0;
+}
+
+/* Destroy the key stored in the keystream struct. */
+void clear_state (keystream *k)
+{
+  memset (&k->S[0], 0, 256);
+  k->i = 0;
+  k->j = 0;
+}
+
+/* Destroy the key stored in the keystream struct. */
+void clear_keystream (keystream *k)
+{
+  clear_key (k);
+  clear_state (k);
+}
+
 /* Set the key. */
 void set_key (keystream *k, void *key, size_t size)
 {
