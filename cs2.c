@@ -52,7 +52,7 @@ int main (int argc, char **argv)
       case 'd':		/* decrypt */
 	mode = 'd';
 	break;
-      case 'n':		/* decrypt */
+      case 'n':		/* number of mixes */
 	num_mix = atoi (optarg);
 	if (num_mix < 1)
 	  print_err ("Number of mixes must be > 1.");
