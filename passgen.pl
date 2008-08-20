@@ -3,7 +3,7 @@
 use warnings;
 use strict;
 use POSIX;
-use Getopt::Long;
+use Getopt::Long qw(:config gnu_getopt);
 use Math::Complex qw(logn);
 use List::Util qw(reduce);
 
@@ -20,14 +20,14 @@ my $version    = "1.0.0";
 
 # Parse arguments
 my $res = GetOptions(
-    "key-length=i" => \$key_len,
-    "words=i"      => \$num_words,
-    "max-length=i" => \$max_len,
-    "quiet!"       => \$quiet,
-    "dictionary=s" => \$dict_file,
-    "random-dev=s" => \$rand_dev,
-    "version"      => \$print_vers,
-    "help"         => \$print_help,
+    "k|key-length=i" => \$key_len,
+    "w|words=i"      => \$num_words,
+    "m|max-length=i" => \$max_len,
+    "q|quiet!"       => \$quiet,
+    "d|dictionary=s" => \$dict_file,
+    "r|random-dev=s" => \$rand_dev,
+    "v|version"      => \$print_vers,
+    "h|help"         => \$print_help,
     );
 
 if ($print_vers) {
