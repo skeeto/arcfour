@@ -3,16 +3,59 @@
 use warnings;
 use strict;
 use POSIX;
+use Getopt::Long;
 use Math::Complex qw(logn);
 use List::Util qw(reduce);
 
 # Options
-my $dict_file = "/usr/share/dict/words";
-my $rand_dev  = "/dev/urandom";
-my $num_words = 0;
-my $key_len   = 64;
-my $max_len   = 6;
-my $quiet     = 0;
+my $dict_file  = "/usr/share/dict/words";
+my $rand_dev   = "/dev/urandom";
+my $num_words  = 0;
+my $key_len    = 64;
+my $max_len    = 6;
+my $quiet      = 0;
+my $print_vers = 0;
+my $print_help = 0;
+my $version    = "1.0.0";
+
+# Parse arguments
+my $res = GetOptions(
+    "key-length=i" => \$key_len,
+    "words=i"      => \$num_words,
+    "max-length=i" => \$max_len,
+    "quiet!"       => \$quiet,
+    "dictionary=s" => \$dict_file,
+    "random-dev=s" => \$rand_dev,
+    "version"      => \$print_vers,
+    "help"         => \$print_help,
+    );
+
+if ($print_vers) {
+    print <<EOF;
+passgen, version $version
+Copyright (C) 2008 Christopher Wellons
+This is free software; see the source code for copying conditions.
+There is ABSOLUTELY NO WARRANTY; not even for MERCHANTIBILITY or
+FITNESS FOR A PARTICULAR PURPOSE.
+EOF
+    exit(0) if (!$print_help);
+}
+
+if ($print_help or !$res) {
+    print <<EOF;
+Usage $0 [options]
+
+  -w  --words      num     Set number of words in passphrase
+  -k, --key-length num     Set passphrase strength
+  -m, --max-length num     Maximum word length (set to 0 for none)
+  -d, --dictionary file    Specify word list to use
+  -r, --random-dev file    Specify source of entropy (ie. /dev/random)
+  -q, --quiet              Turn off verbosity
+  -v, --version            Print version information
+  -h, --help               Print this help information
+EOF
+    exit(0);
+}
 
 # Read in dictionary
 open my($dict), $dict_file
@@ -22,7 +65,7 @@ chomp @words;
 close $dict;
 
 # Filter word list
-@words = grep {$max_len >= length} @words;
+@words = grep {$max_len >= length} @words if ($max_len > 0);
 
 # Calculate bits
 my $bits_per_word = logn($#words, 2);
