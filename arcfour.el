@@ -84,6 +84,11 @@
 	(delete-char 1)
 	(insert-char (logxor c (rc4-gen-byte)) 1)))))
 
+(defun rc4-buffer (key)
+  "Encrypt/decrypt entire buffer with arcfour."
+  (interactive "sEnter key: ")
+  (rc4-region (point-min) (point-max) key))
+
 ;;----------------------------------------------------------------------
 ;; Test vectors
 
