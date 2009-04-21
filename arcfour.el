@@ -63,14 +63,6 @@
 ;;----------------------------------------------------------------------
 ;; Porcelain
 
-(defun rc4-eight-bytes (key)
-  "Generate eight bytes as a vector from the random generator."
-  (rc4-init-state)
-  (rc4-key-sched key)
-  (let ((rlist (make-vector 8 0)) n)
-    (dotimes (n 8 rlist)
-      (aset rlist n (rc4-gen-byte)))))
-
 (defun rc4-region (start end key)
   "Encrypt/decrypt region with arcfour using given key."
   (interactive "r\nsEnter key: ")
@@ -91,6 +83,14 @@
 
 ;;----------------------------------------------------------------------
 ;; Test vectors
+
+(defun rc4-eight-bytes (key)
+  "Generate eight bytes as a vector from the random generator."
+  (rc4-init-state)
+  (rc4-key-sched key)
+  (let ((rlist (make-vector 8 0)) n)
+    (dotimes (n 8 rlist)
+      (aset rlist n (rc4-gen-byte)))))
 
 (defun vector= (v1 v2)
   (if (not (= (length v1) (length v2))) nil
