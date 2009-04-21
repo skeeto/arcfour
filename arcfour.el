@@ -42,7 +42,7 @@
     (aset rc4-state j temp)))
 
 (defun rc4-key-sched (key)
-  "Arcfour key-scheduler: initalize state from key."
+  "Arcfour key-scheduler: initialize state from key."
   (interactive "sEnter key: ")
   (let ((j 0) i)
     (dotimes (i 256 rc4-state)
