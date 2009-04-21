@@ -21,7 +21,7 @@
 
 (defun cs-generate-iv ()
   "Generate a 10-byte initialization vector."
-  (let ((iv ""))
+  (let ((iv "") i)
     (dotimes (i 10 iv)
       (setq iv (concat iv (char-to-string (random 256)))))))
 
