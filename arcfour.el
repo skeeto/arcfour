@@ -28,11 +28,11 @@
 
 ;;; Code:
 
-(require 'cl)
+(require 'cl-lib)
 
-(defstruct rc4
+(cl-defstruct (rc4 (:constructor rc4--create))
   "State of an RC4 cipher."
-  (state (coerce (number-sequence 0 255) 'vector))
+  (state (cl-coerce (number-sequence 0 255) 'vector))
   (i 0) (j 0))
 
 (defun rc4--swap (rc4 i j)
@@ -41,21 +41,25 @@
     (aset (rc4-state rc4) i (aref (rc4-state rc4) j))
     (aset (rc4-state rc4) j temp)))
 
-(defun rc4-key-schedule (rc4 key)
-  "Arcfour key-scheduler: initialize state from key."
-  (let ((j 0) i)
-    (dotimes (i 256 (rc4-state rc4))
-      (setq j (% (+ j (aref (rc4-state rc4) i)
-                      (aref key (% i (length key)))) 256))
-      (rc4--swap rc4 i j))))
+(cl-defun rc4-create (key &optional (n 1))
+  "Create new RC4 cipher state for KEY."
+  (let ((rc4 (rc4--create)))
+    (dotimes (_i n rc4)
+      (let ((j 0) i)
+        (dotimes (i 256)
+          (setq j (% (+ j (aref (rc4-state rc4) i)
+                        (aref key (% i (length key)))) 256))
+          (rc4--swap rc4 i j))))))
 
 (defun rc4-emit (rc4)
   "Generate a single byte from the cipher."
-  (setf (rc4-i rc4) (% (+ (rc4-i rc4) 1) 256))
-  (setf (rc4-j rc4) (% (+ (rc4-j rc4) (aref (rc4-state rc4) (rc4-i rc4))) 256))
-  (rc4--swap rc4 (rc4-i rc4) (rc4-j rc4))
-  (aref (rc4-state rc4) (% (+ (aref (rc4-state rc4) (rc4-i rc4))
-                              (aref (rc4-state rc4) (rc4-j rc4))) 256)))
+  (let ((state (rc4-state rc4)))
+    (setf (rc4-i rc4) (% (+ (rc4-i rc4) 1) 256)
+          (rc4-j rc4) (% (+ (rc4-j rc4) (aref state (rc4-i rc4))) 256))
+    (let ((i (rc4-i rc4))
+          (j (rc4-j rc4)))
+      (rc4--swap rc4 i j)
+      (aref state (% (+ (aref state i) (aref state j)) 256)))))
 
 ;; Interactive functions
 
@@ -63,8 +67,7 @@
   "Encrypt/decrypt region with arcfour using given key."
   (interactive "r\nsEnter key: ")
   (set-buffer-multibyte nil)
-  (let ((rc4 (make-rc4)))
-    (rc4-key-schedule rc4 key)
+  (let ((rc4 (rc4-create key)))
     (save-excursion
       (goto-char start)
       (while (< (point) end)
@@ -83,9 +86,8 @@
 
 (defun rc4--byte-vector (key count)
   "Generate COUNT bytes as a vector from the cipher."
-  (let ((rc4 (make-rc4)))
-    (rc4-key-schedule rc4 key)
-    (coerce (loop for i from 1 to count collect (rc4-emit rc4)) 'vector)))
+  (let ((rc4 (rc4-create key)))
+    (cl-coerce (loop for i from 1 to count collect (rc4-emit rc4)) 'vector)))
 
 (defun rc4--test (key vector)
   (should (equal (rc4--byte-vector key (length vector)) vector)))
