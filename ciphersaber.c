@@ -1,135 +1,163 @@
+#define _POSIX_SOURCE 1
 #include <stdio.h>
-#include <unistd.h>
-#include "arcfour.h"
-#include "ciphersaber.h"
+#include <stdlib.h>
+#include <string.h>
 
-size_t bsize   = 4096;		/* buffer size */
-size_t ivlen   = 10;		/* Initialization Vector length */
+#include <getopt.h>
 
-char *cs_getpass (int confirm);
-int cs_handle_stream (char *passphrase, char *iv, int num_mix,
-		      FILE *instream, FILE *outstream);
+#include "rc4.h"
 
-/* Encrypt stream with ciphersaber. */
-int cs_encrypt (char *passphrase, int num_mix,
-		FILE *instream, FILE *outstream)
+#define IVLEN 10
+
+static void
+usage(void)
 {
-  if (passphrase == NULL)
-    {
-      passphrase = cs_getpass (1);
-      if (passphrase == NULL)
-	return CS_FAILURE;
-    }
-
-  /* Generate an IV */
-  char *iv = (char *) malloc (ivlen);
-  FILE *rand = fopen ("/dev/urandom", "r");
-  if (rand == NULL)
-    {
-      /* Generate by some other method */
-      /* XXX TODO */
-    }
-  else
-    {
-      fread ((void *) iv, 1, 10, rand);
-      fclose (rand);
-    }
-  fwrite (iv, 1, ivlen, outstream);
-
-  int ret = cs_handle_stream (passphrase, iv, num_mix,
-			      instream, outstream);
-  free (iv);
-  return ret;
+    fputs("ciphersaber <-D|-E> [-k file]\n", stderr);
+    exit(EXIT_FAILURE);
 }
 
-/* Decrypt stream with ciphersaber.  */
-int cs_decrypt (char *passphrase, int num_mix,
-		FILE *instream, FILE *outstream)
+/* Pump data from stdin to stdout via XOR with keystream */
+static void
+pump(struct rc4 *rc4)
 {
-  if (passphrase == NULL)
-    {
-      passphrase = cs_getpass (0);
-      if (passphrase == NULL)
-	return CS_FAILURE;
+    size_t z;
+    static char input[4096];
+    while ((z = fread(input, 1, sizeof(input), stdin))) {
+        static char output[sizeof(input)];
+        rc4_rand(rc4, output, z);
+        for (size_t i = 0; i < z; i++)
+            output[i] ^= input[i];
+        if (fwrite(output, 1, z, stdout) != z) {
+            perror(0);
+            exit(EXIT_FAILURE);
+        }
     }
-
-  /* Get IV */
-  char *iv = (char *) malloc (ivlen);
-  fread (iv, 1, ivlen, instream);
-
-  int ret = cs_handle_stream (passphrase, iv, num_mix, instream, outstream);
-  free (iv);
-  return ret;
+    if (ferror(stdin)) {
+        perror(0);
+        exit(EXIT_FAILURE);
+    }
 }
 
-/* Get passphrase interactively from the user. Return NULL for
-   failure. */
-char *cs_getpass (int confirm)
+static void
+encrypt(char *key, int len)
 {
-  char *pass2 = getpass ("Passphrase: ");
-  if (strlen(pass2) == 0)
-    return NULL;
-  while (confirm)
-    {
-      /* Ask again */
-      char *pass1 = strdup(pass2);
-      pass2 = getpass ("Again: ");
-      if (strlen(pass2) == 0)
-	{
-	  free (pass1);
-	  return NULL;
-	}
-      if (strcmp(pass1, pass2) == 0)
-	{
-	  free (pass1);
-	  break;
-	}
+    /* Generate an IV */
+    FILE *urandom = fopen("/dev/urandom", "rb");
+    if (!urandom) {
+        perror("/dev/urandom");
+        exit(EXIT_FAILURE);
+    }
+    if (fread(key + len, 1, IVLEN, urandom) != IVLEN) {
+        perror("/dev/urandom");
+        exit(EXIT_FAILURE);
+    }
+    fclose(urandom);
 
-      /* Start over */
-      fprintf (stderr, "Passphrases did not match. Try again.\n");
-      free (pass1);
-      pass2 = getpass ("Passphrase: ");
-      if (strlen(pass2) == 0)
-	return NULL;
+    /* Write IV header */
+    if (fwrite(key + len, 1, IVLEN, stdout) != IVLEN) {
+        perror(0);
+        exit(EXIT_FAILURE);
     }
 
-  return pass2;
+    struct rc4 rc4[1];
+    rc4_init(rc4, key, len + IVLEN);
+    pump(rc4);
 }
 
-/* En/decrypt a stream given the parameters. */
-int cs_handle_stream (char *passphrase, char *iv, int num_mix,
-		      FILE *instream, FILE *outstream)
+static void
+decrypt(char *key, int len)
 {
-  keystream k;
-
-  size_t passlen = strlen (passphrase);
-  passlen = (passlen < 256 - ivlen ? passlen : 256 - ivlen);
-
-  /* Piece together the key */
-  char *key = (char *) malloc (passlen + ivlen);
-  memcpy (key, passphrase, passlen);
-  memcpy (key + passlen, iv, ivlen);
-  set_key (&k, key, passlen + ivlen);
-  init_keystream (&k, num_mix);
-
-  /* Destroy the passphrase (don't need it anymore) */
-  memset (passphrase, 0, strlen (passphrase));
-  memset (key, 0, passlen + ivlen);
-  clear_key (&k);
-
-  /* Process instream */
-  byte *buffer, *ks;
-  buffer = malloc (bsize);
-  ks     = malloc (bsize);
-  while (!feof (instream))
-    {
-      size_t i, in = fread (buffer, 1, bsize, instream);
-      get_bytes (&k, (void *) ks, in);
-      for (i = 0; i < in; i++)
-	buffer[i] ^= ks[i];
-      fwrite (buffer, in, 1, outstream);
+    /* Read IV header */
+    if (!fread(key + len, 1, IVLEN, stdin)) {
+        perror("reading input");
+        exit(EXIT_FAILURE);
     }
 
-  clear_keystream (&k);
-  return CS_SUCCESS;
+    struct rc4 rc4[1];
+    rc4_init(rc4, key, len + IVLEN);
+    pump(rc4);
+}
+
+int
+main(int argc, char **argv)
+{
+    char *keyfile = 0;
+    enum {M_ENCRYPT = 1, M_DECRYPT} mode = 0;
+
+    int option;
+    while ((option = getopt (argc, argv, "DEk:")) != -1) {
+        switch (option) {
+            case 'E':
+                mode = M_ENCRYPT;
+                break;
+            case 'D':
+                mode = M_DECRYPT;
+                break;
+            case 'k':
+                keyfile = optarg;
+                break;
+            default:
+                usage();
+        }
+    }
+
+    if (!mode)
+        usage();
+
+    int keylen;
+    char key[256];
+    if (!keyfile) {
+        /* Prompt user for a passphrase */
+        char check[sizeof(key)];
+        FILE *tty = fopen("/dev/tty", "r+");
+        if (!tty) {
+            perror(keyfile);
+            exit(EXIT_FAILURE);
+        }
+
+        fputs("Passphrase: ", tty);
+        fflush(tty);
+        if (!fgets(key, sizeof(key) - IVLEN, tty)) {
+            fputs("failed to read phassphrase\n", stderr);
+            exit(EXIT_FAILURE);
+        }
+
+        fputs("Passphrase (repeat): ", tty);
+        fflush(tty);
+        if (!fgets(check, sizeof(check) - IVLEN, tty)) {
+            fputs("failed to read phassphrase\n", stderr);
+            exit(EXIT_FAILURE);
+        }
+
+        if (strcmp(check, key)) {
+            fputs("fatal: passphrases don't match\n", stderr);
+            exit(EXIT_FAILURE);
+        }
+
+        keylen = strlen(key);
+        key[keylen] = 0;
+        fclose(tty);
+    } else {
+        /* Read key from a file */
+        FILE *f = fopen(keyfile, "rb");
+        if (!f) {
+            perror(keyfile);
+            exit(EXIT_FAILURE);
+        }
+        keylen = fread(key, 1, sizeof(key), f);
+        if (!keylen && ferror(f)) {
+            perror(keyfile);
+            exit(EXIT_FAILURE);
+        }
+        fclose(f);
+    }
+
+    switch (mode) {
+        case M_ENCRYPT:
+            encrypt(key, keylen);
+            break;
+        case M_DECRYPT:
+            decrypt(key, keylen);
+            break;
+    }
 }

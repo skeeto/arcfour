@@ -1,19 +1,14 @@
-CFLAGS = -g -W -Wall -O2
-LDFLAGS =
+.POSIX:
+CC     = c99
+CFLAGS = -Wall -Wextra -g3 -Og -march=native
 
-all : arcfour cs2
+all: rc4dump ciphersaber
 
-arcfour : main.o arcfour.o
-	gcc $(LDFLAGS) $(CFLAGS) $^ -o $@
+rc4dump: rc4dump.c rc4.h
+	$(CC) $(LDFLAGS) $(CFLAGS) -o $@ rc4dump.c $(LDLIBS)
 
-cs2 : cs2.o ciphersaber.o arcfour.o
+ciphersaber: ciphersaber.c rc4.h
+	$(CC) $(LDFLAGS) $(CFLAGS) ciphersaber.c -o $@ $(LDLIBS)
 
-arc4.o        : arcfour.c arcfour.h
-main.o        : main.c arcfour.h
-sc2.o         : sc2.c
-ciphersaber.o : ciphersaber.c ciphersaber.h arcfour.h
-
-.PHONY : clean
-
-clean : 
-	$(RM) arcfour cs2 cs2.o ciphersaber.o main.o arcfour.o
+clean:
+	rm -f rc4dump ciphersaber
