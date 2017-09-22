@@ -1,5 +1,5 @@
-#ifndef ARC4_H
-#define ARC4_H
+#ifndef RC4_H
+#define RC4_H
 
 struct rc4 {
     unsigned char s[256];
