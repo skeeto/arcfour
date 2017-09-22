@@ -22,7 +22,7 @@ pump(struct rc4 *rc4)
 {
     size_t z;
     static char input[4096];
-    while ((z = fread(input, 1, sizeof(input), stdin))) {
+    while (!feof(stdin) && (z = fread(input, 1, sizeof(input), stdin))) {
         static char output[sizeof(input)];
         rc4_rand(rc4, output, z);
         for (size_t i = 0; i < z; i++)
