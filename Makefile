@@ -1,5 +1,5 @@
 .POSIX:
-CC     = c99
+CC     = cc -std=c99
 CFLAGS = -Wall -Wextra -g3 -Og -march=native
 
 all: rc4dump ciphersaber
